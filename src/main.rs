@@ -21,6 +21,11 @@ struct Movie {
 
 // nohup ./dad-rust-bash >/dev/null 2>&1 &
 fn main() {
+    if cfg!(target_os = "windows") {
+        println!("该脚本只可以在Linux系统下使用!");
+        return;
+    }
+
     if !Path::new("data.json").exists() {
         println!("请在项目根目录下创建data.json文件，\r\n格式请参考：https://github.com/schizobulia/dad-rust-bash/data.json ");
         return;
@@ -32,6 +37,7 @@ fn main() {
     let mut data: Vec<Movie> = serde_json::from_reader(reader).unwrap();
     let mut create_data = Vec::new();
     let mut tag = true;
+
     while tag && data.len() > 0 {
         tag = false;
         let mut movie = data.pop().unwrap();
