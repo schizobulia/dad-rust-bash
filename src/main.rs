@@ -1,7 +1,6 @@
-use std::{env, thread, time};
-use std::fs;
+use std::{env};
 use std::fs::File;
-use std::io::{BufReader, Write};
+use std::io::{BufReader};
 use serde::Deserialize;
 use serde::Serialize;
 use std::process::Command;
@@ -16,7 +15,6 @@ struct Movie {
     title: String,
     url: String,
     img: String,
-    id: String,
 }
 
 // nohup ./dad-rust-bash >/dev/null 2>&1 &
@@ -35,33 +33,19 @@ fn main() {
     let file = File::open(root_path).unwrap();
     let reader = BufReader::new(file);
     let mut data: Vec<Movie> = serde_json::from_reader(reader).unwrap();
-    let mut create_data = Vec::new();
     let mut tag = true;
 
     while tag && data.len() > 0 {
         tag = false;
-        let mut movie = data.pop().unwrap();
-        let step1 = format!("mkdir {}", movie.id);
-        let step2 = format!("ffmpeg -y -i {}  -vcodec copy -acodec copy -vbsf h264_mp4toannexb ./{}/output.ts", movie.url, movie.id);
-        let step3 = format!("ffmpeg -i ./{}/output.ts -c copy -map 0 -f segment -segment_list ./{}/b.m3u8 -segment_time 120 ./{}/player-%03d.ts",
-            movie.id, movie.id, movie.id);
-        let step4 = format!("rm -rf ./{}/output.ts", movie.id);
-        let step5 = format!("wget {} -O ./{}/output.jpg", movie.img, movie.id);
+        let movie = data.pop().unwrap();
+        let step1 = format!("mkdir {}", movie.title);
+        let step2 = format!("ffmpeg -y -i {}  ./{}/{}.mp4", movie.url, movie.title, movie.title);
+        let step3 = format!("wget {} -O ./{}/cover.jpg", movie.img, movie.title);
+
         Command::new("sh").arg("-c").arg(step1).output().unwrap();
         Command::new("sh").arg("-c").arg(step2).output().unwrap();
         Command::new("sh").arg("-c").arg(step3).output().unwrap();
-        Command::new("sh").arg("-c").arg(step4).output().unwrap();
-        Command::new("sh").arg("-c").arg(step5).output().unwrap();
-        movie.img = format!("/{}/output.jpg", movie.id);
-        movie.url = format!("/{}/b.m3u8", movie.id);
-        create_data.push(movie);
         tag = true;
     }
-
-    if Path::new("create.json").exists() {
-        fs::remove_file("create.json").expect("remove file failed");
-    }
-    let mut file = std::fs::File::create("create.json").expect("create failed");
-    file.write_all(serde_json::to_string(&create_data).unwrap().as_str().as_bytes()).expect("write failed");
 }
 

@@ -1,14 +1,12 @@
 [
     {
-        "title": "测试数据1",
-        "url": "https://jingdian.qincai-zuida.com/20200708/9146_8443e9bb/1000k/hls/index.m3u8",
-        "img": "https://tu.tianzuida.com/pic/upload/vod/2020-07-09/202007091594265845.jpg",
-        "id": "18"
+        "title": "太行山上2005",
+        "url": "https://yi.jingdianzuida.com/ppvod/033D2F73E23224916040DD6FB5ACE040.m3u8",
+        "img": "https://tu.tianzuida.com/pic/upload/vod/2019-11-11/201911111573451544.jpg"
     },
     {
-        "title": "测试数据2",
-        "url": "https://jingdian.qincai-zuida.com/20200707/9108_f35ff80e/1000k/hls/index.m3u8",
-        "img": "https://tu.tianzuida.com/pic/upload/vod/2020-07-08/202007081594178604.jpg",
-        "id": "19"
+        "title": "屠城血证",
+        "url": "https://yi.jingdianzuida.com/ppvod/F346C338CD85BC8CAEABB72D50B914A2.m3u8",
+        "img": "https://tu.tianzuida.com/pic/upload/vod/2019-10-28/201910281572243569.jpg"
     }
 ]
