@@ -1,4 +1,4 @@
-use std::{env, thread, time};
+use std::{env};
 use std::fs;
 use std::fs::File;
 use std::io::{BufReader, Write};
@@ -12,6 +12,7 @@ fn now_dir_path() -> String {
 }
 
 #[derive(Deserialize, Serialize)]
+#[derive(Clone)]
 struct Movie {
     title: String,
     url: String,
@@ -31,31 +32,22 @@ fn main() {
         return;
     }
 
+
     let root_path = format!("{}/{}", now_dir_path(), "data.json");
     let file = File::open(root_path).unwrap();
     let reader = BufReader::new(file);
     let mut data: Vec<Movie> = serde_json::from_reader(reader).unwrap();
     let mut create_data = Vec::new();
-    let mut tag = true;
 
-    while tag && data.len() > 0 {
-        tag = false;
-        let mut movie = data.pop().unwrap();
-        let step1 = format!("mkdir {}", movie.id);
-        let step2 = format!("ffmpeg -y -i {}  -vcodec copy -acodec copy -vbsf h264_mp4toannexb ./{}/output.ts", movie.url, movie.id);
-        let step3 = format!("ffmpeg -i ./{}/output.ts -c copy -map 0 -f segment -segment_list ./{}/b.m3u8 -segment_time 120 ./{}/player-%03d.ts",
-            movie.id, movie.id, movie.id);
-        let step4 = format!("rm -rf ./{}/output.ts", movie.id);
-        let step5 = format!("wget {} -O ./{}/output.jpg", movie.img, movie.id);
-        Command::new("sh").arg("-c").arg(step1).output().unwrap();
-        Command::new("sh").arg("-c").arg(step2).output().unwrap();
-        Command::new("sh").arg("-c").arg(step3).output().unwrap();
-        Command::new("sh").arg("-c").arg(step4).output().unwrap();
-        Command::new("sh").arg("-c").arg(step5).output().unwrap();
-        movie.img = format!("/{}/output.jpg", movie.id);
-        movie.url = format!("/{}/b.m3u8", movie.id);
-        create_data.push(movie);
-        tag = true;
+    loop {
+        if data.len() == 0 { break; }
+        if num_cpus::get() > 0 {
+            let mut movie = data.pop().unwrap();
+            set_work(movie.clone());
+            movie.img = format!("/{}/output.jpg", movie.id);
+            movie.url = format!("/{}/b.m3u8", movie.id);
+            create_data.push(movie.clone());
+        }
     }
 
     if Path::new("create.json").exists() {
@@ -65,3 +57,13 @@ fn main() {
     file.write_all(serde_json::to_string(&create_data).unwrap().as_str().as_bytes()).expect("write failed");
 }
 
+
+fn set_work(movie: Movie) {
+    let step1 = format!("mkdir {}", movie.id);
+    let step3 = format!("ffmpeg -y -i {} -c copy -map 0 -f segment -segment_list ./{}/b.m3u8 -segment_time 120 ./{}/player-%03d.ts",
+                        movie.url, movie.id, movie.id);
+    let step5 = format!("wget {} -O ./{}/output.jpg", movie.img, movie.id);
+    Command::new("sh").arg("-c").arg(step1).spawn().unwrap();
+    Command::new("sh").arg("-c").arg(step3).spawn().expect("err");
+    Command::new("sh").arg("-c").arg(step5).spawn().expect("err");
+}
