@@ -6,6 +6,10 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::process::Command;
 use std::path::Path;
+use futures::channel::mpsc;
+use futures::executor;
+use futures::executor::ThreadPool;
+use futures::StreamExt;
 
 fn now_dir_path() -> String {
     env::current_dir().unwrap().as_path().to_string_lossy().to_string()
@@ -36,19 +40,30 @@ fn main() {
     let root_path = format!("{}/{}", now_dir_path(), "data.json");
     let file = File::open(root_path).unwrap();
     let reader = BufReader::new(file);
-    let mut data: Vec<Movie> = serde_json::from_reader(reader).unwrap();
-    let mut create_data = Vec::new();
+    let data: Vec<Movie> = serde_json::from_reader(reader).unwrap();
+    let pool = ThreadPool::new().expect("Failed to build pool");
+    let (tx, rx) = mpsc::unbounded::<Movie>();
 
-    loop {
-        if data.len() == 0 { break; }
-        if num_cpus::get() > 0 {
-            let mut movie = data.pop().unwrap();
-            set_work(movie.clone());
-            movie.img = format!("/{}/output.jpg", movie.id);
-            movie.url = format!("/{}/b.m3u8", movie.id);
-            create_data.push(movie.clone());
-        }
-    }
+    let fut_values = async {
+        let fut_tx_result = async move {
+            for mut movie in data {
+                set_work(movie.clone());
+                movie.img = format!("/{}/output.jpg", movie.id);
+                movie.url = format!("/{}/b.m3u8", movie.id);
+                tx.unbounded_send(movie).expect("Failed to send")
+            }
+        };
+
+        pool.spawn_ok(fut_tx_result);
+
+        let fut_values = rx
+            .map(|mv| mv)
+            .collect();
+
+        fut_values.await
+    };
+
+    let create_data: Vec<Movie> = executor::block_on(fut_values);
 
     if Path::new("create.json").exists() {
         fs::remove_file("create.json").expect("remove file failed");
@@ -64,6 +79,6 @@ fn set_work(movie: Movie) {
                         movie.url, movie.id, movie.id);
     let step5 = format!("wget {} -O ./{}/output.jpg", movie.img, movie.id);
     Command::new("sh").arg("-c").arg(step1).spawn().unwrap();
-    Command::new("sh").arg("-c").arg(step3).spawn().expect("err");
-    Command::new("sh").arg("-c").arg(step5).spawn().expect("err");
+    Command::new("sh").arg("-c").arg(step3).spawn().unwrap();
+    Command::new("sh").arg("-c").arg(step5).spawn().unwrap();
 }
